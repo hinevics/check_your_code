@@ -4,6 +4,7 @@
 
 import re
 import pandas as pd
+import numpy as np
 from tqdm import tqdm
 import pathlib
 
@@ -13,13 +14,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 import logger
 from loader import load_data
-from config import PATH_DATA, PATH_MOEDELS
+from myconfig import PATH_DATA, PATH_MODELS
 import texts.example_code as text_code
 
 
 nlp = spacy.load("en_core_web_sm")
 PATH_DATA = pathlib.Path(PATH_DATA)
-PATH_MOEDELS = pathlib.Path(PATH_MOEDELS)
+PATH_MODELS = pathlib.Path(PATH_MODELS)
 reg_pattern = r'\`\`\`.+? \[\]\\n.+?\`\`\`\\n'
 reg_pattern_code = r'\`\`\`.+\`\`\`'
 
@@ -74,6 +75,8 @@ def main():
     code_data = pd.DataFrame(columns=['code'])
     for i in tqdm(range(data.shape[0])):
         post_content = data.iloc[i, data.columns.get_loc('post_content')]
+        if (not post_content) or (post_content is None) or (post_content is np.nan):
+            continue
         find_code = re.findall(string=post_content, pattern=reg_pattern)
         if find_code:
             code_data = pd.concat(
@@ -142,7 +145,7 @@ def main():
     logger.logger.info('COMPLETED -- learn model --')
     logger.logger.info('START -- save --')
     code_data.to_pickle(PATH_DATA.joinpath('code_data').with_suffix('pickle'))
-    model.save(PATH_MOEDELS.joinpath('model_v1').with_suffix('.bin'))
+    model.save(PATH_MODELS.joinpath('model_v1').with_suffix('.bin'))
     logger.logger.info('COMPLETED -- save --')
 
 
