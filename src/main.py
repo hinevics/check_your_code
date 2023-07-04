@@ -6,7 +6,7 @@ from telegram.ext import (
     filters,
 )
 
-from config import TG_TOKEN
+from src.myconfig import TG_TOKEN
 from check_code import check
 
 

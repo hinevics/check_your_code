@@ -14,13 +14,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 import logger
 from loader import load_data
-from myconfig import PATH_DATA, PATH_MODELS
+from myconfig import PATH_DATA, PATH_MODELS, PATH_TEMP
 import texts.example_code as text_code
 
 
 nlp = spacy.load("en_core_web_sm")
 PATH_DATA = pathlib.Path(PATH_DATA)
 PATH_MODELS = pathlib.Path(PATH_MODELS)
+PATH_TEMP = pathlib.Path(PATH_TEMP)
 reg_pattern = r'\`\`\`.+? \[\]\\n.+?\`\`\`\\n'
 reg_pattern_code = r'\`\`\`.+\`\`\`'
 
@@ -92,6 +93,13 @@ def main():
             [code_data, pd.DataFrame([post_content], columns=['code'])])
     logger.logger.info('COMPLETED -- parsing code --')
 
+    logger.logger.info('START -- save temp data --')
+    logger.logger.debug('save to data_temp_with_clean_code')
+    if not PATH_TEMP.exists():
+        raise FileNotFoundError('There is no directory for temporary files')
+    code_data.to_csv(PATH_TEMP.joinpath('data_temp_with_clean_code').with_suffix('.csv'))
+    logger.logger.info('COMPLETED -- save temp data --')
+
     code_data.reset_index(inplace=True)
 
     logger.logger.info('START -- clean code --')
@@ -109,6 +117,13 @@ def main():
         tagged_docs=code_data[
             ['index', 'tokens']].apply(lambda x: tagged_docs(x[0], x[1]), axis=1))
     logger.logger.info('COMPLETED -- tagged docs --')
+
+    logger.logger.info('START -- save temp data --')
+    logger.logger.debug('save to data_temp_with_tokens')
+    if not PATH_TEMP.exists():
+        raise FileNotFoundError('There is no directory for temporary files')
+    code_data.to_csv(PATH_TEMP.joinpath('data_temp_with_tokens').with_suffix('.csv'))
+    logger.logger.info('COMPLETED -- save temp data --')
 
     logger.logger.info('START -- crate test data --')
     test_doc_best = clean_code(text_code.test_doc_best)
