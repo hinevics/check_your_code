@@ -62,18 +62,20 @@ def get_metrics_unobservable(
     logger.logger.debug('unseen_similarity bad:', unseen_similarity_bad)
 
 
+def saver_data(data: pd.DataFrame, chunk_name: int):
+    path_ = PATH_TEMP.joinpath(f'data_{chunk_name}.csv')
+    data.to_csv(path_or_buf=path_)
+
+
 def tagged_docs(i, doc):
     document = TaggedDocument(words=doc, tags=[i])
     return document
 
 
-def main():
-    logger.logger.info('START -- load data --')
-    data = load_data(PATH_DATA.joinpath('data').with_suffix('.csv'))
-    logger.logger.info('COMPLETED -- load data --')
-
-    logger.logger.info('START -- parsing code --')
+def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
+    # Функция для поиска
     code_data = pd.DataFrame(columns=['code'])
+
     for i in tqdm(range(data.shape[0])):
         post_content = data.iloc[i, data.columns.get_loc('post_content')]
         if (not post_content) or (post_content is None) or (post_content is np.nan):
@@ -91,77 +93,83 @@ def main():
             continue
         code_data = pd.concat(
             [code_data, pd.DataFrame([post_content], columns=['code'])])
-    logger.logger.info('COMPLETED -- parsing code --')
+    return code_data
 
-    logger.logger.info('START -- save temp data --')
-    logger.logger.debug('save to data_temp_with_clean_code')
-    if not PATH_TEMP.exists():
-        raise FileNotFoundError('There is no directory for temporary files')
-    code_data.to_csv(PATH_TEMP.joinpath('data_temp_with_clean_code').with_suffix('.csv'))
-    logger.logger.info('COMPLETED -- save temp data --')
 
-    code_data.reset_index(inplace=True)
+def main():
 
-    logger.logger.info('START -- clean code --')
-    code_data = code_data.assign(
-        clean_code=code_data.code.map(clean_code))
-    logger.logger.info('COMPLETED -- clean code --')
+    path_data = PATH_DATA.joinpath('data').with_suffix('.csv')
 
-    logger.logger.info('START -- tokenize code --')
-    code_data = code_data.assign(
-        tokens=code_data.clean_code.map(code_tokenize))
-    logger.logger.info('COMPLETED -- tokenize code --')
+    chunk_size = 10000  # Размер порции данных для чтения
+    for id_, chunk in enumerate(pd.read_csv(path_data,
+                                            chunksize=chunk_size)):
+        # Выполнение преобразований над каждой порцией данных
+        logger.logger.info(f'START -- processing chunk: {id_} --')
 
-    logger.logger.info('START -- tagged docs --')
-    code_data = code_data.assign(
-        tagged_docs=code_data[
-            ['index', 'tokens']].apply(lambda x: tagged_docs(x[0], x[1]), axis=1))
-    logger.logger.info('COMPLETED -- tagged docs --')
+        logger.logger.debug(f'droping chunk: {id_}')
+        chunk.drop_duplicates(subset=['id_sol'], inplace=True)
+        chunk.dropna(subset=['post_content'], inplace=True)
+        # parsing
 
-    logger.logger.info('START -- save temp data --')
-    logger.logger.debug('save to data_temp_with_tokens')
-    if not PATH_TEMP.exists():
-        raise FileNotFoundError('There is no directory for temporary files')
-    code_data.to_csv(PATH_TEMP.joinpath('data_temp_with_tokens').with_suffix('.csv'))
-    logger.logger.info('COMPLETED -- save temp data --')
+        logger.logger.debug(f'parsing code chunk: {id_}')
+        chunk = parsing_code(data=chunk)
 
-    logger.logger.info('START -- crate test data --')
-    test_doc_best = clean_code(text_code.test_doc_best)
-    tokens_test_doc_best = code_tokenize(test_doc_best)
-    test_doc_bad = clean_code(text_code.test_doc_bad)
-    tokens_test_doc_bad = code_tokenize(test_doc_bad)
-    logger.logger.info('COMPLETED -- crate test data --')
+        chunk.reset_index(inplace=True)
 
-    logger.logger.info('START -- learn model --')
-    model = Doc2Vec(
-        vector_size=200,
-        window=50,
-        min_count=2,
-        epochs=10,
-        alpha=0.025,
-        min_alpha=0.025)
-    model.build_vocab(list(code_data.tagged_docs.values))
-    for epoch in range(10):
+        logger.logger.debug(f'clean code chunk: {id_}')
+        chunk = chunk.assign(
+            clean_code=chunk.code.map(clean_code))
 
-        if epoch % 2 == 0:
-            logger.logger.debug(f'now training epoch {epoch}\n')
-        model.train(
-            code_data.tagged_docs.values,
-            total_examples=model.corpus_count, epochs=model.epochs)
-        valid_tokens = code_data.iloc[0].tokens
-        get_metrics_unobservable(
-            tokens_doc_best=tokens_test_doc_best,
-            tokens_doc_bad=tokens_test_doc_bad,
-            tokens_valid=valid_tokens,
-            model=model
-        )
-        model.alpha -= 0.002
-        model.min_alpha = model.alpha
-    logger.logger.info('COMPLETED -- learn model --')
-    logger.logger.info('START -- save --')
-    code_data.to_pickle(PATH_DATA.joinpath('code_data').with_suffix('pickle'))
-    model.save(PATH_MODELS.joinpath('model_v1').with_suffix('.bin'))
-    logger.logger.info('COMPLETED -- save --')
+        logger.logger.debug(f'tokenize code chunk: {id_}')
+        chunk = chunk.assign(
+            tokens=chunk.clean_code.map(code_tokenize))
+
+        logger.logger.debug(f'tagged docs chunk: {id_}')
+        chunk = chunk.assign(
+            tagged_docs=chunk[
+                ['index', 'tokens']].apply(lambda x: tagged_docs(x[0], x[1]), axis=1))
+
+        logger.logger.debug(f'save temp chunk: {id_}')
+        saver_data(data=chunk, chunk_name=id_)
+        logger.logger.info(f'COMPLETED -- processing chunk: {id_} --')
+
+    # logger.logger.info('START -- crate test data --')
+    # test_doc_best = clean_code(text_code.test_doc_best)
+    # tokens_test_doc_best = code_tokenize(test_doc_best)
+    # test_doc_bad = clean_code(text_code.test_doc_bad)
+    # tokens_test_doc_bad = code_tokenize(test_doc_bad)
+    # logger.logger.info('COMPLETED -- crate test data --')
+
+    # logger.logger.info('START -- learn model --')
+    # model = Doc2Vec(
+    #     vector_size=200,
+    #     window=50,
+    #     min_count=2,
+    #     epochs=10,
+    #     alpha=0.025,
+    #     min_alpha=0.025)
+    # model.build_vocab(list(code_data.tagged_docs.values))
+    # for epoch in range(10):
+
+    #     if epoch % 2 == 0:
+    #         logger.logger.debug(f'now training epoch {epoch}\n')
+    #     model.train(
+    #         code_data.tagged_docs.values,
+    #         total_examples=model.corpus_count, epochs=model.epochs)
+    #     valid_tokens = code_data.iloc[0].tokens
+    #     get_metrics_unobservable(
+    #         tokens_doc_best=tokens_test_doc_best,
+    #         tokens_doc_bad=tokens_test_doc_bad,
+    #         tokens_valid=valid_tokens,
+    #         model=model
+    #     )
+    #     model.alpha -= 0.002
+    #     model.min_alpha = model.alpha
+    # logger.logger.info('COMPLETED -- learn model --')
+    # logger.logger.info('START -- save --')
+    # code_data.to_pickle(PATH_DATA.joinpath('code_data').with_suffix('pickle'))
+    # model.save(PATH_MODELS.joinpath('model_v1').with_suffix('.bin'))
+    # logger.logger.info('COMPLETED -- save --')
 
 
 if __name__ == "__main__":
