@@ -98,52 +98,40 @@ def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
 
 def main():
 
-    # loading data
+    path_data = PATH_DATA.joinpath('data').with_suffix('.csv')
 
-    logger.logger.info('START -- load data --')
-    data = load_data(PATH_DATA.joinpath('data').with_suffix('.csv'))
-    logger.logger.info('COMPLETED -- load data --')
-
-    # processing
-
-    logger.logger.info('START -- processing --')
-    data.drop_duplicates(subset=['id_sol'], inplace=True)
-    data.dropna(subset=['post_content'], inplace=True)
-    logger.logger('COMPLETED -- processing --')
-    import pandas as pd
-
-    chunk_size = 1000  # Размер порции данных для чтения
-    for id_, chunk in enumerate(pd.read_csv('large_dataset.csv',
+    chunk_size = 10000  # Размер порции данных для чтения
+    for id_, chunk in enumerate(pd.read_csv(path_data,
                                             chunksize=chunk_size)):
         # Выполнение преобразований над каждой порцией данных
+        logger.logger.info(f'START -- processing chunk: {id_} --')
+
+        logger.logger.debug(f'droping chunk: {id_}')
+        chunk.drop_duplicates(subset=['id_sol'], inplace=True)
+        chunk.dropna(subset=['post_content'], inplace=True)
         # parsing
 
-        logger.logger.info('START -- parsing code --')
+        logger.logger.debug(f'parsing code chunk: {id_}')
         chunk = parsing_code(data=chunk)
-        logger.logger.info('COMPLETED -- parsing code --')
 
         chunk.reset_index(inplace=True)
 
-        logger.logger.info('START -- clean code --')
+        logger.logger.debug(f'clean code chunk: {id_}')
         chunk = chunk.assign(
             clean_code=chunk.code.map(clean_code))
-        logger.logger.info('COMPLETED -- clean code --')
 
-        logger.logger.info('START -- tokenize code --')
+        logger.logger.debug(f'tokenize code chunk: {id_}')
         chunk = chunk.assign(
             tokens=chunk.clean_code.map(code_tokenize))
-        logger.logger.info('COMPLETED -- tokenize code --')
 
-        logger.logger.info('START -- tagged docs --')
+        logger.logger.debug(f'tagged docs chunk: {id_}')
         chunk = chunk.assign(
             tagged_docs=chunk[
                 ['index', 'tokens']].apply(lambda x: tagged_docs(x[0], x[1]), axis=1))
-        logger.logger.info('COMPLETED -- tagged docs --')
 
-        logger.logger.info('START -- save temp data --')
-        logger.logger.debug('save to data_temp_with_clean_code')
+        logger.logger.debug(f'save temp chunk: {id_}')
         saver_data(data=chunk, chunk_name=id_)
-        logger.logger.info('COMPLETED -- save temp data --')
+        logger.logger.info(f'COMPLETED -- processing chunk: {id_} --')
 
     # logger.logger.info('START -- crate test data --')
     # test_doc_best = clean_code(text_code.test_doc_best)
