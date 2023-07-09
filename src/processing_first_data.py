@@ -17,7 +17,6 @@ from myconfig import PATH_DATA, PATH_MODELS, PATH_TEMP
 # import texts.example_code as text_code
 
 
-nlp = spacy.load("en_core_web_sm")
 PATH_DATA = pathlib.Path(PATH_DATA)
 PATH_MODELS = pathlib.Path(PATH_MODELS)
 PATH_TEMP = pathlib.Path(PATH_TEMP)
@@ -99,9 +98,8 @@ def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
 def main():
 
     path_data = PATH_DATA.joinpath('data').with_suffix('.csv')
-    chunk_size = 10000  # Размер порции данных для чтения
+    chunk_size = 1_000_000  # Размер порции данных для чтения
     all_chunks = pd.read_csv(path_data, chunksize=chunk_size)
-    logger.logger.info(f'Число чанков:{len(all_chunks)}')
     for id_, chunk in enumerate(all_chunks):
         # Выполнение преобразований над каждой порцией данных
         logger.logger.info(f'START -- processing chunk: {id_} --')
@@ -129,12 +127,6 @@ def main():
         saver_data(data=chunk, chunk_name=id_)
         logger.logger.info(f'COMPLETED -- processing chunk: {id_} --')
 
-    # logger.logger.info('START -- crate test data --')
-    # test_doc_best = clean_code(text_code.test_doc_best)
-    # tokens_test_doc_best = code_tokenize(test_doc_best)
-    # test_doc_bad = clean_code(text_code.test_doc_bad)
-    # tokens_test_doc_bad = code_tokenize(test_doc_bad)
-    # logger.logger.info('COMPLETED -- crate test data --')
 
     # logger.logger.info('START -- learn model --')
     # model = Doc2Vec(
