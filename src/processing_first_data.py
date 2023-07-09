@@ -61,26 +61,24 @@ def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
             continue
         find_code = re.findall(string=post_content, pattern=reg_pattern)
         if find_code:
-            tokens = [code_tokenize(text=c) for c in find_code]
+            code_and_tokens = [[c, code_tokenize(text=c)] for c in find_code]
             temp_code_data = pd.DataFrame(
-                data=dict(code=find_code, tokens=tokens),
+                data=code_and_tokens,
                 columns=['code', 'tokens'])
             code_data = pd.concat(
                 [code_data, temp_code_data])
-            continue
         find_code = re.findall(
             string=post_content, pattern=reg_pattern_code)
         if find_code:
-            tokens = [code_tokenize(c) for c in find_code]
+            code_and_tokens = [[c, code_tokenize(text=c)] for c in find_code]
             temp_code_data = pd.DataFrame(
-                data=dict(code=find_code, tokens=tokens),
+                data=code_and_tokens,
                 columns=['code', 'tokens'])
             code_data = pd.concat(
                 [code_data, temp_code_data])
-            continue
-        tokens = code_tokenize(post_content, clean=False)
+        tokens = code_tokenize(post_content, clean=True)
         temp_code_data = pd.DataFrame(
-            data=dict(code=post_content, tokens=tokens),
+            data=[[post_content, tokens]],
             columns=['code', 'tokens']
         )
         code_data = pd.concat(
