@@ -21,9 +21,8 @@ reg_pattern = r'\`\`\`.+? \[\]\\n.+?\`\`\`\\n'
 reg_pattern_code = r'\`\`\`.+\`\`\`'
 
 
-def clean_code(text: str):
+def clean_code(text: str, patter_type: bool = True):
     text = text.lower()
-    text = re.sub(pattern=r'\`\`\`.+? \[\]', string=text, repl='')
     text = re.sub(pattern=r'\\n', string=text, repl=r' ')
     # text = re.sub(pattern=r'\s+', string=text, repl=' ')
     text = re.sub(pattern=r'\`', string=text, repl='')
@@ -34,10 +33,12 @@ def clean_code(text: str):
     return text
 
 
-def code_tokenize(text: str, clean: bool = True) -> list:
-    text: str = clean_code(text) if clean else text
+def code_tokenize(text: str, clean: bool = True, patter_type: bool = True) -> list:
+    text: str = clean_code(text, patter_type=patter_type) if clean else text
     docs: list = text.split(' ')
-    token: list = [i for i in docs if i not in [' ', '']]
+    token: list = [
+        i for i in docs if i not in [' ', '', 'swift', 'python', 'java', 'c++', 'cpp']
+    ]
     return token
 
 
@@ -61,26 +62,25 @@ def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
             continue
         find_code = re.findall(string=post_content, pattern=reg_pattern)
         if find_code:
-            tokens = [code_tokenize(text=c) for c in find_code]
+            code_and_tokens = [[c, code_tokenize(text=c)] for c in find_code]
             temp_code_data = pd.DataFrame(
-                data=dict(code=find_code, tokens=tokens),
+                data=code_and_tokens,
                 columns=['code', 'tokens'])
             code_data = pd.concat(
                 [code_data, temp_code_data])
-            continue
         find_code = re.findall(
             string=post_content, pattern=reg_pattern_code)
         if find_code:
-            tokens = [code_tokenize(c) for c in find_code]
+            code_and_tokens = [
+                [c, code_tokenize(text=c, patter_type=False)] for c in find_code]
             temp_code_data = pd.DataFrame(
-                data=dict(code=find_code, tokens=tokens),
+                data=code_and_tokens,
                 columns=['code', 'tokens'])
             code_data = pd.concat(
                 [code_data, temp_code_data])
-            continue
-        tokens = code_tokenize(post_content, clean=False)
+        tokens = code_tokenize(post_content, clean=True)
         temp_code_data = pd.DataFrame(
-            data=dict(code=post_content, tokens=tokens),
+            data=[[post_content, tokens]],
             columns=['code', 'tokens']
         )
         code_data = pd.concat(
@@ -91,7 +91,7 @@ def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
 def main():
 
     path_data = PATH_DATA.joinpath('data').with_suffix('.csv')
-    chunk_size = 100  # Размер порции данных для чтения
+    chunk_size = 10_000  # Размер порции данных для чтения
     all_chunks = pd.read_csv(path_data, chunksize=chunk_size)
     for id_, chunk in enumerate(all_chunks):
         # Выполнение преобразований над каждой порцией данных
@@ -114,7 +114,6 @@ def main():
         logger.logger.debug(f'save temp chunk: {id_}')
         saver_data(data=chunk, chunk_name=id_)
         logger.logger.info(f'COMPLETED: processing chunk: {id_}')
-        break
 
 
 if __name__ == "__main__":
