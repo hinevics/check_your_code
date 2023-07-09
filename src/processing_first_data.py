@@ -8,13 +8,10 @@ import numpy as np
 from tqdm import tqdm
 import pathlib
 
-import spacy
 from gensim.models.doc2vec import TaggedDocument
-from sklearn.metrics.pairwise import cosine_similarity
 
 import logger
 from myconfig import PATH_DATA, PATH_MODELS, PATH_TEMP
-# import texts.example_code as text_code
 
 
 PATH_DATA = pathlib.Path(PATH_DATA)
@@ -85,7 +82,7 @@ def main():
     all_chunks = pd.read_csv(path_data, chunksize=chunk_size)
     for id_, chunk in enumerate(all_chunks):
         # Выполнение преобразований над каждой порцией данных
-        logger.logger.info(f'START -- processing chunk: {id_} --')
+        logger.logger.info(f'START: processing chunk: {id_}')
 
         logger.logger.debug(f'droping chunk: {id_}')
         chunk.drop_duplicates(subset=['id_sol'], inplace=True)
@@ -108,7 +105,7 @@ def main():
 
         logger.logger.debug(f'save temp chunk: {id_}')
         saver_data(data=chunk, chunk_name=id_)
-        logger.logger.info(f'COMPLETED -- processing chunk: {id_} --')
+        logger.logger.info(f'COMPLETED: processing chunk: {id_}')
 
 
 if __name__ == "__main__":
