@@ -9,13 +9,12 @@ from tqdm import tqdm
 import pathlib
 
 import spacy
-from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+from gensim.models.doc2vec import TaggedDocument
 from sklearn.metrics.pairwise import cosine_similarity
 
 import logger
-from loader import load_data
 from myconfig import PATH_DATA, PATH_MODELS, PATH_TEMP
-import texts.example_code as text_code
+# import texts.example_code as text_code
 
 
 nlp = spacy.load("en_core_web_sm")
@@ -39,9 +38,10 @@ def clean_code(text: str):
     return text
 
 
-def code_tokenize(text: str):
-    doc = nlp(text)
-    token = [i for i in map(lambda x: f'{x.text}', list(doc)) if i != ' ']
+def code_tokenize(text: str) -> list:
+    text: str = clean_code(text)
+    docs: list = text.split(' ')
+    token: list = [i for i in docs if i not in [' ', '']]
     return token
 
 
@@ -99,10 +99,10 @@ def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
 def main():
 
     path_data = PATH_DATA.joinpath('data').with_suffix('.csv')
-
     chunk_size = 10000  # Размер порции данных для чтения
-    for id_, chunk in enumerate(pd.read_csv(path_data,
-                                            chunksize=chunk_size)):
+    all_chunks = pd.read_csv(path_data, chunksize=chunk_size)
+    logger.logger.info(f'Число чанков:{len(all_chunks)}')
+    for id_, chunk in enumerate(all_chunks):
         # Выполнение преобразований над каждой порцией данных
         logger.logger.info(f'START -- processing chunk: {id_} --')
 
@@ -115,10 +115,6 @@ def main():
         chunk = parsing_code(data=chunk)
 
         chunk.reset_index(inplace=True)
-
-        logger.logger.debug(f'clean code chunk: {id_}')
-        chunk = chunk.assign(
-            clean_code=chunk.code.map(clean_code))
 
         logger.logger.debug(f'tokenize code chunk: {id_}')
         chunk = chunk.assign(
