@@ -44,23 +44,6 @@ def code_tokenize(text: str) -> list:
     return token
 
 
-def get_metrics_unobservable(
-        tokens_doc_best,
-        tokens_doc_bad,
-        tokens_valid,
-        model):
-    # эта функция используется если мы наблюдаем за сторонними документами
-    # в обучении не участвуют
-
-    vector_best = model.infer_vector(tokens_doc_best)
-    vector_bad = model.infer_vector(tokens_doc_bad)
-    vector_valid = model.infer_vector(tokens_valid)
-    unseen_similarity_best = cosine_similarity([vector_best], [vector_valid])[0][0]
-    unseen_similarity_bad = cosine_similarity([vector_bad], [vector_valid])[0][0]
-    logger.logger.debug('unseen_similarity best:', unseen_similarity_best)
-    logger.logger.debug('unseen_similarity bad:', unseen_similarity_bad)
-
-
 def saver_data(data: pd.DataFrame, chunk_name: int):
     path_ = PATH_TEMP.joinpath(f'data_{chunk_name}.csv')
     data.to_csv(path_or_buf=path_)
@@ -126,38 +109,6 @@ def main():
         logger.logger.debug(f'save temp chunk: {id_}')
         saver_data(data=chunk, chunk_name=id_)
         logger.logger.info(f'COMPLETED -- processing chunk: {id_} --')
-
-
-    # logger.logger.info('START -- learn model --')
-    # model = Doc2Vec(
-    #     vector_size=200,
-    #     window=50,
-    #     min_count=2,
-    #     epochs=10,
-    #     alpha=0.025,
-    #     min_alpha=0.025)
-    # model.build_vocab(list(code_data.tagged_docs.values))
-    # for epoch in range(10):
-
-    #     if epoch % 2 == 0:
-    #         logger.logger.debug(f'now training epoch {epoch}\n')
-    #     model.train(
-    #         code_data.tagged_docs.values,
-    #         total_examples=model.corpus_count, epochs=model.epochs)
-    #     valid_tokens = code_data.iloc[0].tokens
-    #     get_metrics_unobservable(
-    #         tokens_doc_best=tokens_test_doc_best,
-    #         tokens_doc_bad=tokens_test_doc_bad,
-    #         tokens_valid=valid_tokens,
-    #         model=model
-    #     )
-    #     model.alpha -= 0.002
-    #     model.min_alpha = model.alpha
-    # logger.logger.info('COMPLETED -- learn model --')
-    # logger.logger.info('START -- save --')
-    # code_data.to_pickle(PATH_DATA.joinpath('code_data').with_suffix('pickle'))
-    # model.save(PATH_MODELS.joinpath('model_v1').with_suffix('.bin'))
-    # logger.logger.info('COMPLETED -- save --')
 
 
 if __name__ == "__main__":
