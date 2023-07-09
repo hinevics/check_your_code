@@ -8,13 +8,10 @@ import numpy as np
 from tqdm import tqdm
 import pathlib
 
-import spacy
 from gensim.models.doc2vec import TaggedDocument
-from sklearn.metrics.pairwise import cosine_similarity
 
 import logger
 from myconfig import PATH_DATA, PATH_MODELS, PATH_TEMP
-# import texts.example_code as text_code
 
 
 PATH_DATA = pathlib.Path(PATH_DATA)
@@ -37,8 +34,8 @@ def clean_code(text: str):
     return text
 
 
-def code_tokenize(text: str) -> list:
-    text: str = clean_code(text)
+def code_tokenize(text: str, clean: bool = True) -> list:
+    text: str = clean_code(text) if clean else text
     docs: list = text.split(' ')
     token: list = [i for i in docs if i not in [' ', '']]
     return token
@@ -56,7 +53,7 @@ def tagged_docs(i, doc):
 
 def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
     # Функция для поиска
-    code_data = pd.DataFrame(columns=['code'])
+    code_data = pd.DataFrame(columns=['code', 'tokens'])
 
     for i in tqdm(range(data.shape[0])):
         post_content = data.iloc[i, data.columns.get_loc('post_content')]
@@ -64,28 +61,41 @@ def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
             continue
         find_code = re.findall(string=post_content, pattern=reg_pattern)
         if find_code:
+            tokens = [code_tokenize(text=c) for c in find_code]
+            temp_code_data = pd.DataFrame(
+                data=dict(code=find_code, tokens=tokens),
+                columns=['code', 'tokens'])
             code_data = pd.concat(
-                [code_data, pd.DataFrame(find_code, columns=['code'])])
+                [code_data, temp_code_data])
             continue
         find_code = re.findall(
             string=post_content, pattern=reg_pattern_code)
         if find_code:
+            tokens = [code_tokenize(c) for c in find_code]
+            temp_code_data = pd.DataFrame(
+                data=dict(code=find_code, tokens=tokens),
+                columns=['code', 'tokens'])
             code_data = pd.concat(
-                [code_data, pd.DataFrame(find_code, columns=['code'])])
+                [code_data, temp_code_data])
             continue
+        tokens = code_tokenize(post_content, clean=False)
+        temp_code_data = pd.DataFrame(
+            data=dict(code=post_content, tokens=tokens),
+            columns=['code', 'tokens']
+        )
         code_data = pd.concat(
-            [code_data, pd.DataFrame([post_content], columns=['code'])])
+            [code_data, temp_code_data])
     return code_data
 
 
 def main():
 
     path_data = PATH_DATA.joinpath('data').with_suffix('.csv')
-    chunk_size = 1_000_000  # Размер порции данных для чтения
+    chunk_size = 100  # Размер порции данных для чтения
     all_chunks = pd.read_csv(path_data, chunksize=chunk_size)
     for id_, chunk in enumerate(all_chunks):
         # Выполнение преобразований над каждой порцией данных
-        logger.logger.info(f'START -- processing chunk: {id_} --')
+        logger.logger.info(f'START: processing chunk: {id_}')
 
         logger.logger.debug(f'droping chunk: {id_}')
         chunk.drop_duplicates(subset=['id_sol'], inplace=True)
@@ -96,11 +106,6 @@ def main():
         chunk = parsing_code(data=chunk)
 
         chunk.reset_index(inplace=True)
-
-        logger.logger.debug(f'tokenize code chunk: {id_}')
-        chunk = chunk.assign(
-            tokens=chunk.clean_code.map(code_tokenize))
-
         logger.logger.debug(f'tagged docs chunk: {id_}')
         chunk = chunk.assign(
             tagged_docs=chunk[
@@ -108,7 +113,8 @@ def main():
 
         logger.logger.debug(f'save temp chunk: {id_}')
         saver_data(data=chunk, chunk_name=id_)
-        logger.logger.info(f'COMPLETED -- processing chunk: {id_} --')
+        logger.logger.info(f'COMPLETED: processing chunk: {id_}')
+        break
 
 
 if __name__ == "__main__":
