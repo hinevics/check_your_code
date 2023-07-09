@@ -9,16 +9,14 @@ from tqdm import tqdm
 import pathlib
 
 import spacy
-from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+from gensim.models.doc2vec import TaggedDocument
 from sklearn.metrics.pairwise import cosine_similarity
 
 import logger
-from loader import load_data
 from myconfig import PATH_DATA, PATH_MODELS, PATH_TEMP
-import texts.example_code as text_code
+# import texts.example_code as text_code
 
 
-nlp = spacy.load("en_core_web_sm")
 PATH_DATA = pathlib.Path(PATH_DATA)
 PATH_MODELS = pathlib.Path(PATH_MODELS)
 PATH_TEMP = pathlib.Path(PATH_TEMP)
@@ -39,27 +37,11 @@ def clean_code(text: str):
     return text
 
 
-def code_tokenize(text: str):
-    doc = nlp(text)
-    token = [i for i in map(lambda x: f'{x.text}', list(doc)) if i != ' ']
+def code_tokenize(text: str) -> list:
+    text: str = clean_code(text)
+    docs: list = text.split(' ')
+    token: list = [i for i in docs if i not in [' ', '']]
     return token
-
-
-def get_metrics_unobservable(
-        tokens_doc_best,
-        tokens_doc_bad,
-        tokens_valid,
-        model):
-    # эта функция используется если мы наблюдаем за сторонними документами
-    # в обучении не участвуют
-
-    vector_best = model.infer_vector(tokens_doc_best)
-    vector_bad = model.infer_vector(tokens_doc_bad)
-    vector_valid = model.infer_vector(tokens_valid)
-    unseen_similarity_best = cosine_similarity([vector_best], [vector_valid])[0][0]
-    unseen_similarity_bad = cosine_similarity([vector_bad], [vector_valid])[0][0]
-    logger.logger.debug('unseen_similarity best:', unseen_similarity_best)
-    logger.logger.debug('unseen_similarity bad:', unseen_similarity_bad)
 
 
 def saver_data(data: pd.DataFrame, chunk_name: int):
@@ -99,10 +81,9 @@ def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
 def main():
 
     path_data = PATH_DATA.joinpath('data').with_suffix('.csv')
-
-    chunk_size = 10000  # Размер порции данных для чтения
-    for id_, chunk in enumerate(pd.read_csv(path_data,
-                                            chunksize=chunk_size)):
+    chunk_size = 1_000_000  # Размер порции данных для чтения
+    all_chunks = pd.read_csv(path_data, chunksize=chunk_size)
+    for id_, chunk in enumerate(all_chunks):
         # Выполнение преобразований над каждой порцией данных
         logger.logger.info(f'START -- processing chunk: {id_} --')
 
@@ -116,10 +97,6 @@ def main():
 
         chunk.reset_index(inplace=True)
 
-        logger.logger.debug(f'clean code chunk: {id_}')
-        chunk = chunk.assign(
-            clean_code=chunk.code.map(clean_code))
-
         logger.logger.debug(f'tokenize code chunk: {id_}')
         chunk = chunk.assign(
             tokens=chunk.clean_code.map(code_tokenize))
@@ -132,44 +109,6 @@ def main():
         logger.logger.debug(f'save temp chunk: {id_}')
         saver_data(data=chunk, chunk_name=id_)
         logger.logger.info(f'COMPLETED -- processing chunk: {id_} --')
-
-    # logger.logger.info('START -- crate test data --')
-    # test_doc_best = clean_code(text_code.test_doc_best)
-    # tokens_test_doc_best = code_tokenize(test_doc_best)
-    # test_doc_bad = clean_code(text_code.test_doc_bad)
-    # tokens_test_doc_bad = code_tokenize(test_doc_bad)
-    # logger.logger.info('COMPLETED -- crate test data --')
-
-    # logger.logger.info('START -- learn model --')
-    # model = Doc2Vec(
-    #     vector_size=200,
-    #     window=50,
-    #     min_count=2,
-    #     epochs=10,
-    #     alpha=0.025,
-    #     min_alpha=0.025)
-    # model.build_vocab(list(code_data.tagged_docs.values))
-    # for epoch in range(10):
-
-    #     if epoch % 2 == 0:
-    #         logger.logger.debug(f'now training epoch {epoch}\n')
-    #     model.train(
-    #         code_data.tagged_docs.values,
-    #         total_examples=model.corpus_count, epochs=model.epochs)
-    #     valid_tokens = code_data.iloc[0].tokens
-    #     get_metrics_unobservable(
-    #         tokens_doc_best=tokens_test_doc_best,
-    #         tokens_doc_bad=tokens_test_doc_bad,
-    #         tokens_valid=valid_tokens,
-    #         model=model
-    #     )
-    #     model.alpha -= 0.002
-    #     model.min_alpha = model.alpha
-    # logger.logger.info('COMPLETED -- learn model --')
-    # logger.logger.info('START -- save --')
-    # code_data.to_pickle(PATH_DATA.joinpath('code_data').with_suffix('pickle'))
-    # model.save(PATH_MODELS.joinpath('model_v1').with_suffix('.bin'))
-    # logger.logger.info('COMPLETED -- save --')
 
 
 if __name__ == "__main__":
