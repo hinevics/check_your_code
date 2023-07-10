@@ -43,8 +43,8 @@ def code_tokenize(text: str, clean: bool = True, patter_type: bool = True) -> li
 
 
 def saver_data(data: pd.DataFrame, chunk_name: int):
-    path_ = PATH_TEMP.joinpath(f'data_{chunk_name}.csv')
-    data.to_csv(path_or_buf=path_)
+    path_ = PATH_TEMP.joinpath(f'data_{chunk_name}.pickle')
+    data.to_pickle(path_)
 
 
 def tagged_docs(i, doc):
@@ -91,7 +91,7 @@ def parsing_code(data: pd.DataFrame) -> pd.DataFrame:
 def main():
 
     path_data = PATH_DATA.joinpath('data').with_suffix('.csv')
-    chunk_size = 10_000  # Размер порции данных для чтения
+    chunk_size = 100_000  # Размер порции данных для чтения
     all_chunks = pd.read_csv(path_data, chunksize=chunk_size)
     for id_, chunk in enumerate(all_chunks):
         # Выполнение преобразований над каждой порцией данных
