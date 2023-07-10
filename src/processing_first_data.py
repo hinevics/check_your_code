@@ -47,7 +47,7 @@ def saver_data(data: pd.DataFrame, chunk_name: int):
     data.to_pickle(path_)
 
 
-def tagged_docs(i, doc):С
+def tagged_docs(i, doc):
     document = TaggedDocument(words=doc, tags=[i])
     return document
 
