@@ -14,8 +14,9 @@ from myconfig import PATH_TEMP, PATH_MODELS
 from texts.example_code import test_doc_bad, test_doc_best
 
 
-def load_data(path: pathlib.PosixPath) -> pd.DataFrame:
-    list_files = glob.glob(path, '*.csv')
+def load_data_chunk(path: pathlib.PosixPath) -> pd.DataFrame:
+    path = f'{path}/*.csv'
+    list_files = glob.glob(path)
     data = pd.concat([pd.read_csv(name) for name in list_files])
     return data
 
@@ -38,8 +39,9 @@ def get_metrics_unobservable(
 
 
 def main():
-    data = load_data(PATH_TEMP)
-
+    logger.logger.info('START: load_data_chunk')
+    data = load_data_chunk(PATH_TEMP)
+    logger.logger.info('COMPLETED: load_data_chunk')
     logger.logger.info('START: crate test data')
     tokens_test_doc_best = code_tokenize(test_doc_best)
     tokens_test_doc_bad = code_tokenize(test_doc_bad)
