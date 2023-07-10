@@ -44,10 +44,10 @@ def code_tokenize(text: str, clean: bool = True, patter_type: bool = True) -> li
 
 def saver_data(data: pd.DataFrame, chunk_name: int):
     path_ = PATH_TEMP.joinpath(f'data_{chunk_name}.pickle')
-    data.to_pickle(path_or_buf=path_)
+    data.to_pickle(path_)
 
 
-def tagged_docs(i, doc):
+def tagged_docs(i, doc):С
     document = TaggedDocument(words=doc, tags=[i])
     return document
 
