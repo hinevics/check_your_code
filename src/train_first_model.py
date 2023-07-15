@@ -12,9 +12,9 @@ from texts.example_code import test_doc_bad, test_doc_best
 
 
 def load_data_chunk(path: pathlib.PosixPath) -> pd.DataFrame:
-    path = f'{path}/*.csv'
+    path = f'{path}/*.pickle'
     list_files = glob.glob(path)
-    data = pd.concat([pd.read_csv(name) for name in list_files])
+    data = pd.concat([pd.read_pickle(name).sample(10000) for name in list_files])
     return data
 
 
@@ -31,14 +31,16 @@ def get_metrics_unobservable(
     vector_valid = model.infer_vector(tokens_valid)
     unseen_similarity_best = cosine_similarity([vector_best], [vector_valid])[0][0]
     unseen_similarity_bad = cosine_similarity([vector_bad], [vector_valid])[0][0]
-    logger.logger.debug('unseen_similarity best:', unseen_similarity_best)
-    logger.logger.debug('unseen_similarity bad:', unseen_similarity_bad)
+    logger.logger.debug(f'unseen_similarity best: {unseen_similarity_best}')
+    logger.logger.debug(f'unseen_similarity bad: {unseen_similarity_bad}')
+    return unseen_similarity_best, unseen_similarity_bad
 
 
 def main():
     logger.logger.info('START: load_data_chunk')
     data = load_data_chunk(PATH_TEMP)
     logger.logger.info('COMPLETED: load_data_chunk')
+    data.to_pickle(r'/home/khinevich/myproject/projects/tg-bots/ CheckYourCode/check_your_code/data/data_all.pickle')
     logger.logger.info('START: crate test data')
     tokens_test_doc_best = code_tokenize(test_doc_best)
     tokens_test_doc_bad = code_tokenize(test_doc_bad)
@@ -62,7 +64,7 @@ def main():
             data.tagged_docs.values,
             total_examples=model.corpus_count, epochs=model.epochs)
         valid_tokens = data.iloc[0].tokens
-        get_metrics_unobservable(
+        unseen_similarity_best, unseen_similarity_bad = get_metrics_unobservable(
             tokens_doc_best=tokens_test_doc_best,
             tokens_doc_bad=tokens_test_doc_bad,
             tokens_valid=valid_tokens,
@@ -73,7 +75,8 @@ def main():
     logger.logger.info('COMPLETED: train model')
 
     logger.logger.info('START: save')
-    model.save(PATH_MODELS.joinpath('model_v1').with_suffix('.bin'))
+    path_model = pathlib.Path(PATH_MODELS)
+    model.save(str(path_model.joinpath('model_v1.bin')))
     logger.logger.info('COMPLETED: save')
 
 
