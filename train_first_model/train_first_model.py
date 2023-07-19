@@ -5,7 +5,7 @@ import glob
 from sklearn.metrics.pairwise import cosine_similarity
 from gensim.models.doc2vec import Doc2Vec
 
-from processing import code_tokenize
+from src.processing import code_tokenize
 import logger
 from myconfig import PATH_TEMP, PATH_MODELS
 from texts.example_code import test_doc_bad, test_doc_best
