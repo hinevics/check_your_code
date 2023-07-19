@@ -26,13 +26,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text="Привет! Я бот Telegram. Отправь мне сой код!")
 
 
-# def checking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     code = ' '.join(context.args)
-#     index = check(code)
-#     return context.bot.send_message(
-#         chat_id=update.effective_chat.id, text=f'score: {index}'
-#     )
-
 async def comparer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user.name
     await update.message.reply_text(text=f"{user} send me your first code.")
@@ -71,13 +64,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     app = ApplicationBuilder().token(TG_TOKEN).build()
-    # start_handler = CommandHandler('start', start)
-    # echo_handler = MessageHandler(filters.TEXT, echo)
-    # # checking_handler = CommandHandler('checking', checking)
-    # app.add_handler(start_handler)
-    # app.add_handler(echo_handler)
-    # app.add_handler(checking_handler)
-
     conversation_handler = ConversationHandler(
         entry_points=[CommandHandler('comparer', comparer)],
         states={
